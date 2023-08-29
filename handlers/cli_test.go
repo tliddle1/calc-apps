@@ -1,16 +1,20 @@
 package handler
 
 import (
+	"bytes"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/tliddle1/calcy-lib/calcy"
 )
 
+func getTestHandler(calculator calcy.Calculator) CalcHandler {
+	myWriter := &DummyWriter{}
+	return New(myWriter, calculator)
+}
+
 func TestHandler(t *testing.T) {
 	myWriter := &DummyWriter{}
-
 	myHandler := New(myWriter, calcy.Addition{})
 
 	err := myHandler.Handle([]string{"1", "2"})
@@ -18,34 +22,24 @@ func TestHandler(t *testing.T) {
 		t.Error(err)
 	}
 	result := myWriter.Written
-	if result[0] != 51 || result[1] != 10 || len(result) != 2 {
+	if bytes.Compare(result, []byte{51, 10}) != 0 {
 		t.Error("Expected a byte array of [51 10] and got", result)
 	}
 }
 
 func TestHandlerBadInput(t *testing.T) {
-	myWriter := &DummyWriter{}
-
-	myHandler := CalcHandler{
-		W:          myWriter,
-		Calculator: calcy.Addition{},
-	}
+	myHandler := getTestHandler(calcy.Addition{})
 
 	err := myHandler.Handle([]string{"f", "2"})
 	if err == nil {
 		t.Error("Wanted an error but none was returned")
-	} else if err.Error() == "strconv.Atoi: parsing \"f\": invalid syntax" {
-		fmt.Println("Error:", err.Error())
+	} else if !errors.Is(err, ErrNumberParsing) {
+		t.Error("Wanted error of type ErrNumberParsing but got", err.Error())
 	}
 }
 
 func TestHandlerBadInput2(t *testing.T) {
-	myWriter := DummyWriter{}
-
-	myHandler := CalcHandler{
-		W:          &myWriter,
-		Calculator: calcy.Addition{},
-	}
+	myHandler := getTestHandler(calcy.Addition{})
 
 	err := myHandler.Handle([]string{"1", "c"})
 	if err == nil {
@@ -57,11 +51,11 @@ func TestHandlerBadInput2(t *testing.T) {
 
 func TestHandlerWriterError(t *testing.T) {
 	myWriter := DummyWriter{}
-
 	myHandler := CalcHandler{
 		W:          &myWriter,
 		Calculator: calcy.Addition{},
 	}
+
 	myWriter.Error = errors.New("test_error")
 	err := myHandler.Handle([]string{"1", "c"})
 	if err == nil {

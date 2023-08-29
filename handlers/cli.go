@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -23,13 +24,18 @@ func New(w io.Writer, c calcy.Calculator) CalcHandler {
 func (this CalcHandler) Handle(args []string) error {
 	// Parse the command line arguments into integers
 	num1, err1 := strconv.Atoi(args[0])
-	num2, err2 := strconv.Atoi(args[1])
-	result := this.Calculator.Calculate(num1, num2)
 	if err1 != nil {
-		return err1
-	} else if err2 != nil {
-		return err2
+		return fmt.Errorf("%w: %w", ErrNumberParsing, err1)
 	}
+	num2, err2 := strconv.Atoi(args[1])
+	if err2 != nil {
+		return fmt.Errorf("%w: %w", ErrNumberParsing, err2)
+	}
+	result := this.Calculator.Calculate(num1, num2)
 	_, err := fmt.Fprintln(this.W, result)
 	return err
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var ErrNumberParsing = errors.New("error parsing string as number")
